@@ -1,0 +1,2147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鏂囦欢鍩庡競 路 File City</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+:root {
+  --bg: #0a0a1a;
+  --glass: rgba(10,10,30,0.7);
+  --glass-border: rgba(255,255,255,0.07);
+  --blue: #4A9EFF;
+  --gold: #FFD93D;
+  --pink: #FF6B9D;
+  --text: #e8ecf5;
+  --text-dim: rgba(232,236,245,0.55);
+  --radius: 10px;
+  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:var(--font);color:var(--text);background:var(--bg);user-select:none}
+
+#canvas-container{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0}
+
+/* FPS */
+#fps-counter{position:fixed;top:10px;right:10px;z-index:300;color:rgba(255,255,255,0.3);font-size:11px;font-family:monospace;pointer-events:none}
+
+/* Glass base */
+.glass{background:var(--glass);backdrop-filter:blur(18px) saturate(1.3);-webkit-backdrop-filter:blur(18px) saturate(1.3);border:1px solid var(--glass-border);border-radius:var(--radius)}
+
+/* Top bar */
+#top-bar{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:12px;padding:8px 18px;min-width:320px;max-width:92vw}
+#top-bar .logo{font-size:17px;font-weight:700;white-space:nowrap;letter-spacing:0.3px}
+#top-bar .logo span{color:var(--blue)}
+.btn-primary{background:linear-gradient(135deg,var(--blue),#6C5CE7);color:#fff;border:none;padding:7px 18px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:all .25s;white-space:nowrap}
+.btn-primary:hover{transform:scale(1.04);box-shadow:0 0 24px rgba(74,158,255,0.35)}
+.btn-primary:active{transform:scale(.97)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-ghost{background:rgba(255,255,255,0.05);color:var(--text);border:1px solid var(--glass-border);padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;transition:all .2s}
+.btn-ghost:hover{background:rgba(255,255,255,0.1)}
+.btn-icon{background:rgba(255,255,255,0.05);color:var(--text);border:1px solid var(--glass-border);width:34px;height:34px;border-radius:6px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.btn-icon:hover{background:rgba(255,255,255,0.1)}
+
+.search-group{display:flex;align-items:center;gap:4px}
+.search-group input{background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);border-radius:6px;padding:7px 11px;color:var(--text);font-size:12px;width:140px;outline:none;transition:border-color .2s}
+.search-group input::placeholder{color:var(--text-dim)}
+.search-group input:focus{border-color:var(--blue)}
+.search-count{font-size:11px;color:var(--gold);min-width:55px;text-align:center}
+
+/* Progress */
+#progress-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:200;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px)}
+#progress-overlay.active{display:flex}
+#progress-box{background:var(--glass);backdrop-filter:blur(24px);border:1px solid var(--glass-border);border-radius:14px;padding:30px 38px;text-align:center;min-width:300px;box-shadow:0 0 80px rgba(0,0,0,0.6)}
+#progress-box h3{font-size:17px;margin-bottom:6px}
+#progress-box p{font-size:12px;color:var(--text-dim);margin-bottom:18px}
+.pb-track{width:100%;height:5px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.pb-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--blue),var(--gold));border-radius:3px;transition:width .3s}
+.pb-text{font-size:12px;color:var(--text-dim);margin-bottom:14px}
+.btn-cancel{background:rgba(255,80,80,0.15);color:#ff6b6b;border:1px solid rgba(255,80,80,0.25);padding:7px 18px;border-radius:6px;font-size:12px;cursor:pointer;transition:all .2s}
+.btn-cancel:hover{background:rgba(255,80,80,0.25)}
+
+/* Stats */
+#stats-panel{position:fixed;bottom:24px;left:24px;z-index:50;padding:14px 18px;min-width:165px;cursor:pointer;transition:all .3s}
+#stats-panel .s-title{font-size:13px;font-weight:600;margin-bottom:7px;color:var(--gold)}
+#stats-panel .s-row{display:flex;justify-content:space-between;gap:12px;font-size:12px;padding:1.5px 0}
+#stats-panel .s-row .l{color:var(--text-dim)}
+#stats-panel .s-row .v{color:var(--text);font-weight:500}
+.ranking-sec{margin-top:10px;padding-top:10px;border-top:1px solid var(--glass-border);display:none}
+.ranking-sec.open{display:block}
+.ranking-sec h4{font-size:11px;color:var(--blue);margin-bottom:4px}
+.r-item{font-size:10px;display:flex;justify-content:space-between;padding:1.5px 0;color:var(--text-dim)}
+.r-item .nm{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.r-item .sz{color:var(--gold)}
+
+/* Detail */
+#detail-panel{position:fixed;bottom:24px;right:24px;z-index:50;padding:18px;min-width:240px;max-width:320px;display:none;animation:slideIn .3s ease}
+#detail-panel.active{display:block}
+@keyframes slideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+#detail-panel .d-close{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--text-dim);font-size:16px;cursor:pointer;transition:color .2s}
+#detail-panel .d-close:hover{color:#fff}
+#detail-panel .d-name{font-size:15px;font-weight:600;margin-bottom:10px;padding-right:18px;word-break:break-all}
+#detail-panel .d-type{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:600;margin-bottom:10px}
+.dt-folder{background:rgba(74,158,255,0.18);color:var(--blue)}
+.dt-file{background:rgba(255,217,61,0.13);color:var(--gold)}
+.d-info{font-size:12px;line-height:1.7}
+.d-info .rw{display:flex;justify-content:space-between}
+.d-info .rw .l{color:var(--text-dim)}
+.d-info .rw .r{color:var(--text);text-align:right;word-break:break-all;max-width:170px}
+.btn-expand{background:rgba(74,158,255,0.15);color:var(--blue);border:1px solid rgba(74,158,255,0.2);padding:5px 14px;border-radius:5px;font-size:11px;cursor:pointer;margin-top:8px;transition:all .2s}
+.btn-expand:hover{background:rgba(74,158,255,0.25)}
+
+/* Time slider */
+#time-control{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:50;padding:10px 22px;display:flex;align-items:center;gap:14px;min-width:280px}
+#time-control .tl{font-size:12px;font-weight:500;min-width:75px;text-align:center;color:var(--gold)}
+#time-control input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:rgba(255,255,255,0.12);border-radius:2px;outline:none;cursor:pointer}
+#time-control input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--blue);cursor:pointer;box-shadow:0 0 14px rgba(74,158,255,0.35);transition:transform .15s}
+#time-control input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+.time-marks{display:flex;justify-content:space-between;position:absolute;bottom:-2px;left:80px;right:70px;pointer-events:none}
+.time-marks span{width:1px;height:6px;background:rgba(255,255,255,0.15)}
+
+/* Action bar */
+#action-bar{position:fixed;top:80px;right:16px;z-index:50;display:flex;flex-direction:column;gap:7px}
+
+/* Toast */
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);z-index:300;padding:8px 22px;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--glass-border);border-radius:var(--radius);font-size:13px;opacity:0;transition:all .35s;pointer-events:none}
+#toast.active{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Empty hint */
+#empty-hint{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1;text-align:center;pointer-events:none;opacity:.5}
+#empty-hint h2{font-size:26px;font-weight:300;margin-bottom:6px}
+#empty-hint p{font-size:14px;color:var(--text-dim)}
+
+/* Keyboard shortcuts hint */
+#kbd-hint{position:fixed;bottom:80px;right:24px;z-index:40;font-size:10px;color:rgba(255,255,255,0.15);pointer-events:none;text-align:right;line-height:1.6}
+
+@media(max-width:768px){
+  #top-bar{top:10px;padding:6px 12px;gap:8px;flex-wrap:wrap;width:96vw;justify-content:center}
+  #top-bar .logo{font-size:14px}
+  .search-group input{width:90px}
+  #stats-panel{bottom:72px;left:10px;min-width:140px;padding:10px 12px}
+  #detail-panel{bottom:72px;right:10px;min-width:180px;max-width:260px;padding:12px}
+  #time-control{width:92vw;padding:8px 14px;bottom:10px;min-width:unset}
+  #action-bar{top:120px;right:10px}
+  #action-bar .btn-icon{width:30px;height:30px;font-size:13px}
+  #kbd-hint{display:none}
+}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+<div id="fps-counter">-- FPS</div>
+
+<div id="empty-hint">
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M9 5V3h6v2"/></svg>
+  <h2>閫夋嫨涓€涓枃浠跺す</h2>
+  <p>鐐瑰嚮涓婃柟鎸夐挳寮€濮嬫瀯寤轰綘鐨勫煄甯?/p>
+</div>
+
+<div id="progress-overlay">
+  <div id="progress-box">
+    <h3>鎵弿鏂囦欢绯荤粺涓?..</h3>
+    <p>姝ｅ湪鏋勫缓浣犵殑鏈潵鍩庡競</p>
+    <div class="pb-track"><div class="pb-fill" id="progress-fill"></div></div>
+    <div class="pb-text" id="progress-text">宸叉壂鎻?0 涓」鐩?/div>
+    <button class="btn-cancel" id="btn-cancel-scan">鍙栨秷鎵弿</button>
+  </div>
+</div>
+
+<div id="top-bar">
+  <div class="logo">鏂囦欢<span>鍩庡競</span></div>
+  <button class="btn-primary" id="btn-select-folder">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;margin-right:4px"><path d="M4 20V4a2 2 0 0 1 2-2h4l4 4h6a2 2 0 0 1 2 2v12"/><circle cx="12" cy="13" r="2"/><path d="M12 15v4"/></svg>
+    閫夋嫨鏂囦欢澶?  </button>
+  <div class="search-group">
+    <input type="text" id="search-input" placeholder="鎼滅储..." />
+    <button class="btn-icon" id="btn-search" title="鎼滅储">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>
+    </button>
+    <span class="search-count" id="search-count"></span>
+  </div>
+</div>
+
+<div id="stats-panel" class="glass">
+  <div class="s-title">鍩庡競缁熻</div>
+  <div class="s-row"><span class="l">鏂囦欢澶?/span><span class="v" id="stat-folders">-</span></div>
+  <div class="s-row"><span class="l">鏂囦欢</span><span class="v" id="stat-files">-</span></div>
+  <div class="s-row"><span class="l">鎬诲ぇ灏?/span><span class="v" id="stat-size">-</span></div>
+  <div class="s-row"><span class="l">鎵弿鑰楁椂</span><span class="v" id="stat-time">-</span></div>
+  <div class="s-row"><span class="l">寤虹瓚鏁?/span><span class="v" id="stat-buildings">-</span></div>
+  <div class="ranking-sec" id="ranking-section">
+    <h4>Top 10 鏈€澶ф枃浠跺す</h4>
+    <div id="ranking-folders"></div>
+    <h4 style="margin-top:6px;">Top 10 鏈€澶ф枃浠?/h4>
+    <div id="ranking-files"></div>
+  </div>
+</div>
+
+<div id="detail-panel" class="glass">
+  <button class="d-close" id="detail-close">鉁?/button>
+  <div class="d-name" id="detail-name"></div>
+  <div class="d-type" id="detail-type"></div>
+  <div class="d-info" id="detail-info"></div>
+    <button class="btn-expand" id="btn-expand-children" style="display:none">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;margin-right:3px"><circle cx="12" cy="12" r="3"/><path d="M12 5v2M12 17v2M5 12h2M17 12h2"/></svg>
+      楂樹寒瀛愬缓绛?    </button>
+</div>
+
+<div id="time-control" class="glass">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(232,236,245,0.4)" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+  <input type="range" id="time-slider" min="0" max="6" value="6" step="1" />
+  <span class="tl" id="time-label">鍏ㄩ儴</span>
+  <div class="time-marks"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+</div>
+
+<div id="action-bar">
+  <button class="btn-icon" id="btn-screenshot" title="鎴浘淇濆瓨">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+  </button>
+  <button class="btn-icon" id="btn-export" title="瀵煎嚭鎶ュ憡">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+  </button>
+</div>
+
+<div id="toast"></div>
+<div id="kbd-hint">R 澶嶄綅 路 F 椋炶 路 Space 鑷浆</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+
+// ============================================================
+// TWEEN ENGINE (lightweight, no dependency)
+// ============================================================
+const EASE = {
+  power1In: t => t,
+  power1Out: t => 1 - Math.pow(1 - t, 1),
+  power1InOut: t => t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2,
+  power2In: t => t*t,
+  power2Out: t => 1 - (1-t)*(1-t),
+  power2InOut: t => t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2,
+  power3In: t => t*t*t,
+  power3Out: t => 1 - Math.pow(1-t, 3),
+  power3InOut: t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2,
+  // Overshoot: overshoot past target by amount, then settle back
+  overshoot: (t, amount = 0.1) => {
+    if (t >= 1) return 1;
+    return t < 0.5
+      ? 4*t*t*t*(1 + amount) + amount * t
+      : 1 - Math.pow(-2*t+2, 3)/2 * (1 + amount) + amount * (1-t);
+  },
+  linear: t => t,
+};
+
+class Tween {
+  constructor(target, props, opts = {}) {
+    this.target = target;
+    this.props = props;
+    this.duration = opts.duration || 1000;
+    this.delay = opts.delay || 0;
+    this.easeFn = typeof opts.ease === 'function' ? opts.ease : (EASE[opts.ease] || EASE.power3Out);
+    this.onUpdate = opts.onUpdate || null;
+    this.onComplete = opts.onComplete || null;
+    this.yoyo = opts.yoyo || false;
+    this.repeat = opts.repeat || 0;
+    this.overshoot = opts.overshoot || 0;
+
+    // keyframes: array of { pct, values } where values is a flat object
+    this.keyframes = opts.keyframes || null;
+    if (this.keyframes) {
+      this.keyframes.sort((a,b) => a.pct - b.pct);
+    }
+
+    this.startValues = {};
+    this.diffValues = {};
+    this.elapsed = -this.delay;
+    this.repeatCount = 0;
+    this.done = false;
+    this._id = Tween._nextId++;
+    this.cancelled = false;
+
+    // Snapshot start values
+    for (const key of Object.keys(props())) {
+      this.startValues[key] = props()[key];
+    }
+    // Pre-compute diff
+    for (const key of Object.keys(props())) {
+      const start = this.startValues[key];
+      const end = props()[key];
+      this.diffValues[key] = end - start;
+    }
+
+    Tween._active.push(this);
+  }
+
+  update(dt) {
+    if (this.done || this.cancelled) return;
+    this.elapsed += dt;
+
+    if (this.elapsed < 0) return;
+
+    let p = Math.min(this.elapsed / this.duration, 1);
+    let shouldComplete = false;
+
+    if (p >= 1) {
+      p = 1;
+      shouldComplete = true;
+    }
+
+    let easedP;
+    if (this.keyframes) {
+      // Keyframe interpolation
+      easedP = p;
+      this._applyKeyframes(easedP);
+    } else {
+      // Overshoot ease
+      if (this.overshoot > 0 && p < 1) {
+        easedP = EASE.overshoot(p, this.overshoot);
+      } else {
+        easedP = this.easeFn(p);
+      }
+      // Apply properties
+      for (const key of Object.keys(this.startValues)) {
+        if (this.props()[key] !== undefined) {
+          this.target[key] = this.startValues[key] + this.diffValues[key] * easedP;
+        }
+      }
+    }
+
+    if (this.onUpdate) this.onUpdate(p);
+
+    if (shouldComplete) {
+      // Final snap
+      if (!this.keyframes) {
+        for (const key of Object.keys(this.startValues)) {
+          if (this.props()[key] !== undefined) {
+            this.target[key] = this.startValues[key] + this.diffValues[key];
+          }
+        }
+      }
+      if (this.repeat > this.repeatCount) {
+        this.repeatCount++;
+        this.elapsed = -this.delay;
+        // Reverse for yoyo
+        if (this.yoyo) {
+          const tmp = this.startValues;
+          // Swap start/end
+          for (const key of Object.keys(this.startValues)) {
+            const end = this.props()[key];
+            this.startValues[key] = end;
+            this.diffValues[key] = this.startValues[key] - end;
+          }
+        }
+        return;
+      }
+      this.done = true;
+      if (this.onComplete) this.onComplete();
+    }
+  }
+
+  _applyKeyframes(p) {
+    if (!this.keyframes || this.keyframes.length === 0) return;
+    // Find surrounding keyframes
+    let kfA = this.keyframes[0];
+    let kfB = this.keyframes[this.keyframes.length - 1];
+    for (let i = 0; i < this.keyframes.length - 1; i++) {
+      if (p >= this.keyframes[i].pct && p <= this.keyframes[i+1].pct) {
+        kfA = this.keyframes[i];
+        kfB = this.keyframes[i+1];
+        break;
+      }
+    }
+    const localP = (p - kfA.pct) / (kfB.pct - kfA.pct);
+    const easedLocal = this.easeFn(localP);
+
+    for (const key of Object.keys(this.startValues)) {
+      if (kfA.values[key] !== undefined && kfB.values[key] !== undefined) {
+        this.target[key] = kfA.values[key] + (kfB.values[key] - kfA.values[key]) * easedLocal;
+      }
+    }
+  }
+
+  cancel() {
+    this.cancelled = true;
+    this.done = true;
+  }
+}
+Tween._nextId = 0;
+Tween._active = [];
+
+function tween(target, props, opts) {
+  return new Tween(target, props, opts);
+}
+
+function updateTweens(dt) {
+  for (let i = Tween._active.length - 1; i >= 0; i--) {
+    Tween._active[i].update(dt);
+    if (Tween._active[i].done || Tween._active[i].cancelled) {
+      Tween._active.splice(i, 1);
+    }
+  }
+}
+
+function cancelAllTweens() {
+  for (const t of Tween._active) t.cancel();
+  Tween._active.length = 0;
+}
+
+// ============================================================
+// STATE
+// ============================================================
+const S = {
+  items: [], tree: null, buildings: [], scene: null, camera: null,
+  controls: null, renderer: null, labelRenderer: null, composer: null,
+  raycaster: new THREE.Raycaster(), pointer: new THREE.Vector2(),
+  hovered: null, selected: null, clone: new THREE.Clock(),
+  searchResults: [], searchIdx: -1, scanAbort: false,
+  timeFilter: Infinity, cityGroup: null, labelGroup: null,
+  starField: null, bloomPass: null, autoRotate: true,
+  flyMode: false, flyKeys: {},
+  cameraAnimating: false,
+  audioCtx: null, audioNodes: null, buildingAnims: [],
+  needRender: true,
+  cameraController: null,
+};
+
+// ============================================================
+// CAMERA FLY CONTROLLER
+// ============================================================
+class CameraFlyController {
+  constructor(camera, controls) {
+    this.camera = camera;
+    this.controls = controls;
+    this.active = false;
+    this._onControlStart = null;
+    this._boundControlStart = this._handleControlStart.bind(this);
+    // Listen for user interruption on OrbitControls
+    controls.addEventListener('start', this._boundControlStart);
+  }
+
+  _handleControlStart() {
+    if (this.active) {
+      this.abort();
+    }
+  }
+
+  /**
+   * Fly to a target position while looking at lookAtTarget.
+   * Uses an arc path (parabolic rise) for smooth cinematic feel.
+   */
+  flyTo(targetPos, lookAtTarget, duration = 1.2, opts = {}) {
+    return new Promise(resolve => {
+      if (this.active) this.abort();
+      this.active = true;
+      this.controls.enabled = false;
+
+      const startPos = this.camera.position.clone();
+      const startTarget = this.controls.target.clone();
+      const endPos = targetPos.clone();
+      const endTarget = lookAtTarget.clone();
+
+      // Arc midpoint: rise above the midpoint
+      const mid = new THREE.Vector3(
+        (startPos.x + endPos.x) / 2,
+        Math.max(startPos.y, endPos.y, 5) + (opts.arcHeight || 5) + Math.abs(endPos.x - startPos.x) * 0.1,
+        (startPos.z + endPos.z) / 2
+      );
+
+      // Build keyframes for camera position along a quadratic bezier-like path
+      const keyframesPos = [];
+      const steps = 20;
+      for (let i = 0; i <= steps; i++) {
+        const p = i / steps;
+        // Quadratic bezier: B(p) = (1-p)虏*P0 + 2(1-p)p*P1 + p虏*P2
+        const p0 = startPos, p1 = mid, p2 = endPos;
+        const x = (1-p)*(1-p)*p0.x + 2*(1-p)*p*p1.x + p*p*p2.x;
+        const y = (1-p)*(1-p)*p0.y + 2*(1-p)*p*p1.y + p*p*p2.y;
+        const z = (1-p)*(1-p)*p0.z + 2*(1-p)*p*p1.z + p*p*p2.z;
+        keyframesPos.push({ pct: p, values: { x, y, z } });
+      }
+
+      // Build keyframes for controls target (linear lookAt)
+      const keyframesTarget = [];
+      for (let i = 0; i <= steps; i++) {
+        const p = i / steps;
+        const tx = startTarget.x + (endTarget.x - startTarget.x) * p;
+        const ty = startTarget.y + (endTarget.y - startTarget.y) * p;
+        const tz = startTarget.z + (endTarget.z - startTarget.z) * p;
+        keyframesTarget.push({ pct: p, values: { x: tx, y: ty, z: tz } });
+      }
+
+      const easeName = opts.ease || 'power3InOut';
+      const hasOvershoot = opts.overshoot || (easeName === 'power3InOut' ? 0.05 : 0);
+
+      this._posTween = tween(this.camera.position, () => ({}), {
+        duration: duration * 1000,
+        ease: easeName,
+        keyframes: keyframesPos,
+        overshoot: hasOvershoot,
+        onUpdate: (p) => {
+          // Lerp lookAt target in parallel
+          const tp = this.easeFn(p, 'power2Out');
+          this.controls.target.lerpVectors(startTarget, endTarget, tp);
+          // Camera looks at target during flight
+          this.camera.lookAt(this.controls.target);
+        },
+        onComplete: () => {
+          // Final snap
+          this.camera.position.copy(endPos);
+          this.controls.target.copy(endTarget);
+          this.camera.lookAt(endTarget);
+          this.active = false;
+          this.controls.enabled = true;
+          this.controls.update();
+          resolve();
+        },
+      });
+
+      // Target tween
+      this._targetTween = tween(this.controls.target, () => ({ x: this.controls.target.x, y: this.controls.target.y, z: this.controls.target.z }), {
+        duration: duration * 1000,
+        ease: easeName,
+        keyframes: keyframesTarget,
+      });
+    });
+  }
+
+  easeFn(t, name) {
+    return (EASE[name] || EASE.power2Out)(t);
+  }
+
+  /**
+   * Smoothly orbit around a center point at a given radius and angle
+   */
+  orbitAround(center, radius, startAngle, endAngle, duration = 3, opts = {}) {
+    return new Promise(resolve => {
+      if (this.active) this.abort();
+      this.active = true;
+      this.controls.enabled = false;
+
+      const r = radius;
+      const startAng = startAngle;
+      const endAng = endAngle;
+      const c = center;
+
+      const steps = 30;
+      const keyframes = [];
+      for (let i = 0; i <= steps; i++) {
+        const p = i / steps;
+        const angle = startAng + (endAng - startAng) * p;
+        const x = c.x + Math.cos(angle) * r;
+        const z = c.z + Math.sin(angle) * r;
+        const y = c.y + (opts.height || 12);
+        keyframes.push({ pct: p, values: { x, y, z } });
+      }
+
+      this._posTween = tween(this.camera.position, () => ({}), {
+        duration: duration * 1000,
+        ease: opts.ease || 'linear',
+        keyframes,
+        onUpdate: () => {
+          this.camera.lookAt(c);
+        },
+        onComplete: () => {
+          this.active = false;
+          this.controls.enabled = true;
+          this.controls.target.copy(c);
+          this.controls.update();
+          resolve();
+        },
+      });
+    });
+  }
+
+  /**
+   * Smoothly reset to default view
+   */
+  resetView(duration = 1.5) {
+    return this.flyTo(
+      new THREE.Vector3(22, 18, 22),
+      new THREE.Vector3(0, 0, 0),
+      duration,
+      { ease: 'power2InOut', arcHeight: 3 }
+    );
+  }
+
+  abort() {
+    if (this._posTween) { this._posTween.cancel(); this._posTween = null; }
+    if (this._targetTween) { this._targetTween.cancel(); this._targetTween = null; }
+    this.active = false;
+    this.controls.enabled = true;
+  }
+
+  dispose() {
+    this.abort();
+    this.controls.removeEventListener('start', this._boundControlStart);
+  }
+}
+
+// ============================================================
+// CONSTANTS
+// ============================================================
+const SYSTEM_FOLDERS = new Set(['node_modules','.git','__MACOSX','.svn','.hg','.DS_Store','Thumbs.db','.idea','.vscode','.next','.cache','dist','build','.parcel-cache']);
+const EXT_COLORS = {
+  jpg:'#FF6B35',jpeg:'#FF6B35',png:'#FF6B35',gif:'#FF6B35',bmp:'#FF6B35',svg:'#FF6B35',webp:'#FF6B35',ico:'#FF6B35',
+  mp4:'#4ECDC4',avi:'#4ECDC4',mkv:'#4ECDC4',mov:'#4ECDC4',wmv:'#4ECDC4',flv:'#4ECDC4',webm:'#4ECDC4',
+  mp3:'#FFE66D',wav:'#FFE66D',flac:'#FFE66D',aac:'#FFE66D',ogg:'#FFE66D',m4a:'#FFE66D',
+  pdf:'#FF6B6B',doc:'#4A9EFF',docx:'#4A9EFF',txt:'#95E1D3',rtf:'#95E1D3',md:'#95E1D3',
+  xls:'#A8E6CF',xlsx:'#A8E6CF',csv:'#A8E6CF',
+  ppt:'#FFB3B3',pptx:'#FFB3B3',key:'#FFB3B3',
+  js:'#F7DF1E',ts:'#3178C6',tsx:'#3178C6',jsx:'#F7DF1E',
+  py:'#3776AB',java:'#B07219',cpp:'#F34B7D',c:'#555555',cs:'#178600',
+  go:'#00ADD8',rs:'#DEA584',php:'#4F5D95',rb:'#CC342D',swift:'#F05138',
+  kt:'#7F52FF',scala:'#DC322F',hs:'#5E5086',lua:'#000080',r:'#198CE7',
+  html:'#E34F26',htm:'#E34F26',css:'#2965F1',scss:'#C6538C',xml:'#0060AC',json:'#292929',yaml:'#6A9FB5',yml:'#6A9FB5',toml:'#9C6200',
+  zip:'#FDCB6E',rar:'#FDCB6E','7z':'#FDCB6E',tar:'#FDCB6E',gz:'#FDCB6E',
+  exe:'#E17055',msi:'#E17055',app:'#E17055',dmg:'#E17055',sh:'#4CAF50',bat:'#E17055',
+};
+const FOLDER_COLOR = '#74B9FF';
+const GOLD = '#FFD93D';
+const UNKNOWN = '#666680';
+const TIME_LABELS = ['鏈€杩?澶?,'鏈€杩?澶?,'鏈€杩?0澶?,'鏈€杩?0澶?,'鏈€杩?骞?,'鍏ㄩ儴'];
+const TIME_VALS = [1,7,30,90,365,99999];
+
+// ============================================================
+// AUDIO
+// ============================================================
+function initAudio() {
+  try {
+    S.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Ambient hum
+    const osc = S.audioCtx.createOscillator();
+    const gain = S.audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 55;
+    gain.gain.value = 0.02;
+    const lpf = S.audioCtx.createBiquadFilter();
+    lpf.type = 'lowpass';
+    lpf.frequency.value = 120;
+    osc.connect(lpf); lpf.connect(gain); gain.connect(S.audioCtx.destination);
+    osc.start();
+    S.audioNodes = { humOsc: osc, humGain: gain, lpf };
+  } catch(e) { /* audio not available */ }
+}
+
+function playRise() {
+  try {
+    if (!S.audioCtx) return;
+    const ctx = S.audioCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(200, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.6);
+    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.8);
+  } catch(e) {}
+}
+
+function playClick() {
+  try {
+    if (!S.audioCtx) return;
+    const ctx = S.audioCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 1200;
+    gain.gain.setValueAtTime(0.04, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.1);
+  } catch(e) {}
+}
+
+function playHover() {
+  try {
+    if (!S.audioCtx) return;
+    const ctx = S.audioCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 1800;
+    gain.gain.setValueAtTime(0.015, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.05);
+  } catch(e) {}
+}
+
+// ============================================================
+// FILE SCANNER
+// ============================================================
+async function scanDir(rootHandle, maxDepth=5, maxItems=20000, onProgress=p=>p) {
+  const items = [];
+  let aborted = false;
+
+  const visit = async (handle, path, depth) => {
+    if (S.scanAbort) { aborted = true; return; }
+    if (items.length >= maxItems) return;
+    if (depth > maxDepth) return;
+    if (handle.name.startsWith('.') && depth > 0) return;
+    if (SYSTEM_FOLDERS.has(handle.name)) return;
+
+    if (handle.kind === 'file') {
+      const file = await handle.getFile();
+      items.push({ path: path + '/' + handle.name, name: handle.name, size: file.size, modifiedTime: new Date(file.lastModified), isDirectory: false, extension: getExt(handle.name), depth, children: [] });
+      onProgress(items.length);
+    } else if (handle.kind === 'directory') {
+      const idx = items.length;
+      const dirItem = { path: path + '/' + handle.name, name: handle.name, size: 0, modifiedTime: new Date(), isDirectory: true, extension: '', depth, children: [] };
+      items.push(dirItem);
+      onProgress(items.length);
+
+      let totalSize = 0, maxTime = 0;
+      const entries = [];
+      for await (const entry of handle.values()) { entries.push(entry); if (items.length >= maxItems) break; }
+      const childItems = [];
+      for (const entry of entries) {
+        const before = items.length;
+        await visit(entry, dirItem.path, depth + 1);
+        for (let i = before; i < items.length; i++) {
+          const c = items[i];
+          if (c.path.startsWith(dirItem.path + '/')) { childItems.push(c); totalSize += c.size; if (c.modifiedTime.getTime() > maxTime) maxTime = c.modifiedTime.getTime(); }
+        }
+      }
+      items[idx].children = childItems;
+      items[idx].size = totalSize;
+      items[idx].modifiedTime = maxTime > 0 ? new Date(maxTime) : new Date();
+    }
+  };
+
+  await visit(rootHandle, '', 0);
+  return { items, aborted };
+}
+
+function getExt(name) { const i = name.lastIndexOf('.'); return i > 0 ? name.slice(i+1).toLowerCase() : ''; }
+
+// ============================================================
+// COLOR
+// ============================================================
+function getColor(item) {
+  if (item.isDirectory) {
+    if (item.depth === 0) return GOLD;
+    const childExts = {}; let total = 0;
+    (function walk(n) {
+      if (n.isDirectory) for (const c of n.children||[]) walk(c);
+      else { const e = n.extension; childExts[e] = (childExts[e]||0) + n.size; total += n.size; }
+    })(item);
+    if (total === 0) return FOLDER_COLOR;
+    let r=0,g=0,b=0;
+    for (const [ext,sz] of Object.entries(childExts)) {
+      const w = sz/total;
+      const c = new THREE.Color(EXT_COLORS[ext] || UNKNOWN);
+      r += c.r*w; g += c.g*w; b += c.b*w;
+    }
+    return '#' + new THREE.Color(r,g,b).getHexString();
+  }
+  return EXT_COLORS[item.extension] || UNKNOWN;
+}
+
+function emIntensity(mt) {
+  const d = (Date.now() - mt.getTime()) / 864e5;
+  if (d<=1) return 1; if (d<=7) return 0.7; if (d<=30) return 0.4; if (d<=90) return 0.2; return 0.05;
+}
+
+// ============================================================
+// SIZE UTILITIES
+// ============================================================
+function fmtSize(b) {
+  if (!b) return '0 B';
+  const u=['B','KB','MB','GB','TB']; const k=1024; const i=Math.floor(Math.log(b)/Math.log(k));
+  return (b/Math.pow(k,i)).toFixed(i>0?1:0)+' '+u[i];
+}
+function sizeMB(b) { return b/(1024*1024); }
+function fmtTime(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+
+// ============================================================
+// QUANTILE-BASED SIZING
+// ============================================================
+function computeQuantiles(sizes, ps) {
+  if (!sizes.length) return ps.map(()=>0);
+  const sorted = [...sizes].sort((a,b)=>a-b);
+  return ps.map(p => sorted[Math.floor(p/100 * (sorted.length-1))]);
+}
+
+function mapHeight(sizeMB, quantiles, isDir) {
+  const [p0,p25,p50,p75,p90,p99] = quantiles;
+  if (isDir) {
+    if (sizeMB <= p50) return 0.8 + (sizeMB/(p50||1)) * 2.2;
+    if (sizeMB <= p90) return 3 + ((sizeMB-p50)/((p90-p50)||1)) * 4;
+    if (sizeMB <= p99) return 7 + ((sizeMB-p90)/((p99-p90)||1)) * 5;
+    return 12 + Math.min(8, (sizeMB-p99)/(p99||1) * 3);
+  }
+  if (sizeMB <= p50) return 0.2 + (sizeMB/(p50||1)) * 1.0;
+  if (sizeMB <= p90) return 1.2 + ((sizeMB-p50)/((p90-p50)||1)) * 3;
+  if (sizeMB <= p99) return 4.2 + ((sizeMB-p90)/((p99-p90)||1)) * 4;
+  return 8.2 + Math.min(4, (sizeMB-p99)/(p99||1) * 2);
+}
+
+function mapWidth(sizeMB, childCount, isDir) {
+  if (isDir) {
+    const w = Math.sqrt(childCount+1) * 0.35 + 0.3;
+    return Math.max(0.3, Math.min(3.5, w));
+  }
+  return Math.max(0.2, Math.min(0.7, 0.35 + (sizeMB/100) * 0.08));
+}
+
+// ============================================================
+// SCENE SETUP
+// ============================================================
+function setupScene() {
+  const container = document.getElementById('canvas-container');
+
+  // Scene
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0a1a);
+  scene.fog = new THREE.FogExp2(0x0a0a1a, 0.008);
+
+  // Camera
+  const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 200);
+  camera.position.set(22, 18, 22);
+
+  // WebGL Renderer
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  container.appendChild(renderer.domElement);
+
+  // CSS2D
+  const labelRenderer = new CSS2DRenderer();
+  labelRenderer.setSize(window.innerWidth, window.innerHeight);
+  labelRenderer.domElement.style.position = 'absolute';
+  labelRenderer.domElement.style.top = '0';
+  labelRenderer.domElement.style.left = '0';
+  labelRenderer.domElement.style.pointerEvents = 'none';
+  container.appendChild(labelRenderer.domElement);
+
+  // Controls
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.rotateSpeed = 0.5;
+  controls.zoomSpeed = 0.8;
+  controls.minDistance = 3;
+  controls.maxDistance = 100;
+  controls.minPolarAngle = THREE.MathUtils.degToRad(10);
+  controls.maxPolarAngle = THREE.MathUtils.degToRad(85);
+  controls.target.set(0,0,0);
+  controls.update();
+
+  // Camera Fly Controller
+  const camControl = new CameraFlyController(camera, controls);
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0x223366, 0.4));
+  const main = new THREE.DirectionalLight(0xffffff, 1.0);
+  main.position.set(20,30,20); main.castShadow = true;
+  main.shadow.mapSize.set(2048,2048);
+  main.shadow.camera.near = 0.5; main.shadow.camera.far = 80;
+  main.shadow.camera.left = -40; main.shadow.camera.right = 40;
+  main.shadow.camera.top = 40; main.shadow.camera.bottom = -40;
+  scene.add(main);
+  const fill = new THREE.DirectionalLight(0x4488ff, 0.3);
+  fill.position.set(-20,10,-20);
+  scene.add(fill);
+
+  // Ground
+  const groundGeo = new THREE.CircleGeometry(60, 64);
+  const groundMat = new THREE.MeshStandardMaterial({ color: 0x0a0a2a, transparent: true, opacity: 0.5, roughness: 1, metalness: 0, side: THREE.DoubleSide });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI/2; ground.position.y = -0.01;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // Grid ground helper (custom)
+  const gridHelper = new THREE.GridHelper(100, 40, 0x1a2a4a, 0x1a2a4a);
+  gridHelper.material.transparent = true;
+  gridHelper.material.opacity = 0.2;
+  gridHelper.position.y = 0;
+  scene.add(gridHelper);
+
+  // Energy core glow
+  const coreGeo = new THREE.RingGeometry(0, 3, 32);
+  const coreMat = new THREE.MeshBasicMaterial({ color: 0x4A9EFF, transparent: true, opacity: 0.08, side: THREE.DoubleSide });
+  const core = new THREE.Mesh(coreGeo, coreMat);
+  core.rotation.x = -Math.PI/2; core.position.y = 0.001;
+  scene.add(core);
+  const coreGeo2 = new THREE.RingGeometry(0, 6, 32);
+  const coreMat2 = new THREE.MeshBasicMaterial({ color: 0x6C5CE7, transparent: true, opacity: 0.04, side: THREE.DoubleSide });
+  const core2 = new THREE.Mesh(coreGeo2, coreMat2);
+  core2.rotation.x = -Math.PI/2; core2.position.y = 0.002;
+  scene.add(core2);
+
+  // Stars
+  const starCount = 2500;
+  const starPos = new Float32Array(starCount * 3);
+  const starSizes = new Float32Array(starCount);
+  for (let i=0; i<starCount; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const r = 60 + Math.random() * 40;
+    starPos[i*3] = r * Math.sin(phi) * Math.cos(theta);
+    starPos[i*3+1] = Math.abs(r * Math.cos(phi));
+    starPos[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+    starSizes[i] = 0.03 + Math.random() * 0.15;
+  }
+  const starGeo = new THREE.BufferGeometry();
+  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+  starGeo.setAttribute('size', new THREE.BufferAttribute(starSizes, 1));
+  const starMat = new THREE.PointsMaterial({ color: 0xaaccff, size: 0.08, transparent: true, opacity: 0.6, sizeAttenuation: true });
+  S.starField = new THREE.Points(starGeo, starMat);
+  scene.add(S.starField);
+
+  // Post-processing (Bloom)
+  const composer = new EffectComposer(renderer);
+  const renderPass = new RenderPass(scene, camera);
+  composer.addPass(renderPass);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.3, 0.5, 0.2);
+  composer.addPass(bloom);
+  S.bloomPass = bloom;
+
+  // Resize
+  window.addEventListener('resize', () => {
+    const w = window.innerWidth, h = window.innerHeight;
+    camera.aspect = w/h; camera.updateProjectionMatrix();
+    renderer.setSize(w,h); labelRenderer.setSize(w,h);
+    composer.setSize(w,h);
+  });
+
+  S.scene = scene; S.camera = camera; S.controls = controls;
+  S.renderer = renderer; S.labelRenderer = labelRenderer; S.composer = composer;
+  S.cameraController = camControl;
+
+  document.getElementById('empty-hint').style.display = 'none';
+  initAudio();
+  startLoop();
+}
+
+// ============================================================
+// RENDER LOOP
+// ============================================================
+function startLoop() {
+  let frames = 0, lastFps = performance.now();
+  const fpsEl = document.getElementById('fps-counter');
+
+  function animate() {
+    requestAnimationFrame(animate);
+
+    const dt = Math.min(S.clone.getDelta(), 0.05); // cap delta
+
+    // Auto rotate - orbit camera around center (does NOT break raycasting)
+    if (S.autoRotate && !S.flyMode && !S.cameraAnimating && !S.cameraController?.active) {
+      const radius = S.camera.position.distanceTo(S.controls.target);
+      if (radius > 2 && radius < 80) {
+        const angle = 0.002;
+        const dir = new THREE.Vector3().subVectors(S.camera.position, S.controls.target);
+        const euler = new THREE.Euler(0, angle, 0);
+        dir.applyEuler(euler);
+        S.camera.position.copy(S.controls.target).add(dir);
+        S.camera.lookAt(S.controls.target);
+      }
+    }
+
+    // Star rotation
+    if (S.starField) S.starField.rotation.y += 0.0001;
+
+    // Fly mode (WASD + mouse look)
+    if (S.flyMode) {
+      const speed = 0.3;
+      const forward = new THREE.Vector3();
+      S.camera.getWorldDirection(forward);
+      forward.y = 0; forward.normalize();
+      const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0,1,0)).normalize();
+      if (S.flyKeys['w'] || S.flyKeys['W']) S.camera.position.add(forward.clone().multiplyScalar(speed));
+      if (S.flyKeys['s'] || S.flyKeys['S']) S.camera.position.add(forward.clone().multiplyScalar(-speed));
+      if (S.flyKeys['a'] || S.flyKeys['A']) S.camera.position.add(right.clone().multiplyScalar(-speed));
+      if (S.flyKeys['d'] || S.flyKeys['D']) S.camera.position.add(right.clone().multiplyScalar(speed));
+      if (S.flyKeys['q'] || S.flyKeys['Q']) S.camera.position.y += speed;
+      if (S.flyKeys['e'] || S.flyKeys['E']) S.camera.position.y -= speed;
+      S.controls.target.copy(S.camera.position).add(forward.clone().multiplyScalar(10));
+    }
+
+    // Animate buildings (breathing, scanning)
+    const t = S.clone.getElapsedTime();
+    for (const b of S.buildings) {
+      if (b.breathPhase != null) {
+        b.mesh.material.emissiveIntensity = b.origIntensity + Math.sin(t * 2 + b.breathPhase) * 0.15;
+      }
+      if (b.scanPhase != null) {
+        const scanY = ((t * 0.5 + b.scanPhase) % 1) * b.data.height;
+        b.scanline && (b.scanline.position.y = scanY);
+      }
+      // Time slider lerp
+      if (b.targetIntensity != null) {
+        b.mesh.material.emissiveIntensity += (b.targetIntensity - b.mesh.material.emissiveIntensity) * 0.05;
+      }
+    }
+
+    // Growth animation
+    for (const a of S.buildingAnims) {
+      a.progress = Math.min(1, a.progress + 0.025);
+      const ease = 1 - Math.pow(1 - a.progress, 3);
+      const targetH = a.targetH;
+      a.mesh.scale.y = ease;
+      a.mesh.position.y = targetH * ease / 2;
+      a.mesh.material.emissiveIntensity = a.intensity * ease;
+      if (a.progress >= 1) {
+        a.mesh.scale.y = 1;
+        a.mesh.position.y = targetH / 2;
+        a.mesh.material.emissiveIntensity = a.intensity;
+        a.done = true;
+      }
+    }
+    S.buildingAnims = S.buildingAnims.filter(a => !a.done);
+
+    // Update tweens
+    updateTweens(dt * 1000);
+
+    // FPS
+    frames++;
+    const now = performance.now();
+    if (now - lastFps >= 1000) {
+      fpsEl.textContent = frames + ' FPS';
+      if (frames < 20 && S.bloomPass) {
+        S.bloomPass.strength = 0.1;
+      } else if (S.bloomPass) {
+        S.bloomPass.strength = 0.3;
+      }
+      frames = 0; lastFps = now;
+    }
+
+    S.controls.update();
+    S.composer.render();
+    S.labelRenderer.render(S.scene, S.camera);
+  }
+  animate();
+}
+
+// ============================================================
+// LAYOUT
+// ============================================================
+const MAX_BUILDINGS = 12000;
+
+function buildCity(items) {
+  // Cleanup
+  if (S.cityGroup) {
+    S.scene.remove(S.cityGroup);
+    S.cityGroup.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); });
+  }
+  if (S.labelGroup) { S.scene.remove(S.labelGroup); }
+  S.buildings = []; S.buildingAnims = [];
+  S.cityGroup = new THREE.Group();
+  S.labelGroup = new THREE.Group();
+
+  const root = items.find(i => i.depth === 0);
+  if (!root) { showToast('鏈壘鍒版牴鐩綍'); return; }
+
+  // Limit
+  if (items.length > MAX_BUILDINGS) {
+    items.sort((a,b) => (b.size + (b.children||[]).length*1000) - (a.size + (a.children||[]).length*1000));
+    const keep = items.slice(0, MAX_BUILDINGS);
+    showToast(`椤圭洰杩囧锛屼粎鏄剧ず鍓?${MAX_BUILDINGS} 涓猔);
+    // Rebuild tree with limited set
+    const keepPaths = new Set(keep.map(i => i.path));
+    items = keep.filter(i => {
+      // Keep if in set or is parent of something in set
+      for (const kp of keepPaths) if (kp.startsWith(i.path + '/') || kp === i.path) return true;
+      return false;
+    });
+  }
+
+  S.items = items;
+  S.tree = root;
+
+  // Compute quantiles
+  const dirSizes = items.filter(i=>i.isDirectory).map(i=>sizeMB(i.size));
+  const fileSizes = items.filter(i=>!i.isDirectory).map(i=>sizeMB(i.size));
+  const quantiles = computeQuantiles([...dirSizes, ...fileSizes], [0,25,50,75,90,99]);
+
+  // Assign positions
+  assignPos(root, 0, 0, 0, null, quantiles);
+
+  // Build meshes
+  traverseTree(root, n => { createBuilding(n, quantiles); });
+
+  // Force-directed relaxation (simple: push apart overlapping)
+  for (let iter = 0; iter < 5; iter++) {
+    for (const a of S.buildings) {
+      for (const b of S.buildings) {
+        if (a === b) continue;
+        const dx = a.mesh.position.x - b.mesh.position.x;
+        const dz = a.mesh.position.z - b.mesh.position.z;
+        const dist = Math.sqrt(dx*dx + dz*dz);
+        const minDist = 0.8;
+        if (dist < minDist && dist > 0.001) {
+          const push = (minDist - dist) * 0.15;
+          a.mesh.position.x += (dx/dist) * push;
+          a.mesh.position.z += (dz/dist) * push;
+        }
+      }
+    }
+  }
+
+  S.scene.add(S.cityGroup);
+  S.scene.add(S.labelGroup);
+
+  // Start growth animation
+  playRise();
+  startGrowthAnim();
+
+  updateStats(items);
+  detectClusters(root);
+}
+
+function assignPos(node, cx, cz, parentAngle, parentNode, quantiles) {
+  if (!node) return;
+  const children = getAllChildren(node);
+
+  if (node.depth === 0) { node.posX = 0; node.posZ = 0; }
+
+  const folderChildren = children.filter(c => c.isDirectory);
+  const fileChildren = children.filter(c => !c.isDirectory);
+
+  // Importance-based radius: more important items closer to center
+  if (folderChildren.length > 0) {
+    // Sort by importance (size 脳 children)
+    const scored = folderChildren.map(c => ({ c, score: c.size * ((c.children||[]).length+1) }));
+    scored.sort((a,b) => b.score - a.score);
+
+    const baseRadius = node.depth <= 1 ? 16 + Math.random() * 4 :
+                       node.depth === 2 ? 6 + Math.random() * 3 : 3 + Math.random() * 2;
+
+    scored.forEach(({c}, i) => {
+      const angle = (parentAngle||0) + (Math.PI*2 * i / scored.length) + (node.depth === 1 ? 0 : Math.random()*0.4);
+      // Important items closer to center
+      const importance = i / scored.length;
+      const r = baseRadius * (0.6 + importance * 0.6) + (Math.random()-0.5)*1.5;
+      c.posX = (node.posX||0) + Math.cos(angle) * r;
+      c.posZ = (node.posZ||0) + Math.sin(angle) * r;
+      assignPos(c, c.posX, c.posZ, angle, node, quantiles);
+    });
+  }
+
+  // Files: cluster tightly
+  if (fileChildren.length > 0) {
+    const angleStep = Math.PI*2 / Math.max(fileChildren.length, 1);
+    fileChildren.forEach((child, i) => {
+      const angle = angleStep * i + (parentAngle||0);
+      const r = 0.6 + (i / fileChildren.length) * 0.8;
+      child.posX = (node.posX||0) + Math.cos(angle) * r;
+      child.posZ = (node.posZ||0) + Math.sin(angle) * r;
+    });
+  }
+}
+
+function getAllChildren(node) { return node.children || []; }
+function traverseTree(node, fn) { fn(node); for (const c of node.children||[]) traverseTree(c, fn); }
+
+// ============================================================
+// BUILDING CREATION (with LOD)
+// ============================================================
+function createBuilding(item, quantiles) {
+  const isDir = item.isDirectory;
+  const mb = sizeMB(item.size);
+  const cc = (item.children || []).length;
+
+  const h = mapHeight(mb, quantiles, isDir);
+  const w = mapWidth(mb, cc, isDir);
+  const d = w;
+
+  const color = new THREE.Color(getColor(item));
+  const intensity = emIntensity(item.modifiedTime);
+
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const isLarge = !isDir && mb > 1000;
+  const mat = new THREE.MeshStandardMaterial({
+    color, emissive: color, emissiveIntensity: intensity,
+    roughness: isDir ? 0.35 : 0.5,
+    metalness: isDir ? 0.25 : 0.1,
+    transparent: !isDir, opacity: isDir ? 1 : 0.88,
+  });
+
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(item.posX||0, 0, item.posZ||0);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  mesh.userData = { item, isDir, origIntensity: intensity };
+
+  // Store for growth animation
+  mesh.scale.y = 0.001;
+  S.buildingAnims.push({
+    mesh, targetH: h, intensity,
+    progress: 0, delay: Math.random() * 0.5, done: false,
+  });
+  S.cityGroup.add(mesh);
+
+  // Edge glow lines for folders
+  if (isDir && !isLarge) {
+    const edges = new THREE.EdgesGeometry(geo);
+    const edgeMat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.15 });
+    const lines = new THREE.LineSegments(edges, edgeMat);
+    lines.position.copy(mesh.position);
+    S.cityGroup.add(lines);
+  }
+
+  // Antenna for folders (thin cylinder on top)
+  if (isDir && h > 2) {
+    const antH = h * (0.08 + Math.random() * 0.08);
+    const antR = w * 0.05;
+    const antGeo = new THREE.CylinderGeometry(antR * 0.5, antR, antH, 4);
+    const antMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
+    const ant = new THREE.Mesh(antGeo, antMat);
+    ant.position.set(item.posX||0, h + antH/2, item.posZ||0);
+    S.cityGroup.add(ant);
+    // Antenna tip glow
+    const tipGeo = new THREE.SphereGeometry(antR * 0.8, 6, 6);
+    const tipMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3 });
+    const tip = new THREE.Mesh(tipGeo, tipMat);
+    tip.position.set(item.posX||0, h + antH, item.posZ||0);
+    S.cityGroup.add(tip);
+  }
+
+  // Scanning line for large folders
+  if (isDir && cc > 5 && h > 3) {
+    const scanGeo = new THREE.BoxGeometry(w * 0.7, 0.03, d * 0.7);
+    const scanMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.15 });
+    const scanline = new THREE.Mesh(scanGeo, scanMat);
+    scanline.position.set(item.posX||0, 0, item.posZ||0);
+    S.cityGroup.add(scanline);
+    mesh.userData._scanline = scanline;
+  }
+
+  // Breathing glow for files
+  if (!isDir) {
+    mesh.userData._breathPhase = Math.random() * Math.PI * 2;
+  }
+
+  // Special: city hall ring
+  if (isDir && item.depth === 0) {
+    const ringGeo = new THREE.RingGeometry(0.5, 1.5, 32);
+    const ringMat = new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.set(0, 0.2, 0);
+    ring.rotation.x = -Math.PI/2;
+    S.cityGroup.add(ring);
+    // Second ring
+    const ringGeo2 = new THREE.RingGeometry(2, 2.8, 32);
+    const ringMat2 = new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
+    const ring2 = new THREE.Mesh(ringGeo2, ringMat2);
+    ring2.position.set(0, 0.15, 0);
+    ring2.rotation.x = -Math.PI/2;
+    S.cityGroup.add(ring2);
+  }
+
+  // Large file pulse
+  if (isLarge) {
+    mat.emissive = new THREE.Color(0xff3300);
+    mesh.userData._pulsePhase = Math.random() * Math.PI * 2;
+    mesh.userData._isLarge = true;
+  }
+
+  // Labels for depth <= 2 folders
+  if (isDir && item.depth > 0 && item.depth <= 2) {
+    const div = document.createElement('div');
+    div.textContent = item.name;
+    div.style.cssText = 'color:#fff;font-size:10px;font-weight:500;font-family:var(--font);text-shadow:0 0 10px rgba(0,0,0,0.95),0 0 4px #000,0 2px 6px rgba(0,0,0,0.8);background:rgba(0,0,0,0.45);padding:2px 7px;border-radius:4px;border:1px solid rgba(255,255,255,0.06);backdrop-filter:blur(4px);white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis;pointer-events:none';
+    const label = new CSS2DObject(div);
+    label.position.set(item.posX||0, h + 0.8, item.posZ||0);
+    S.labelGroup.add(label);
+  }
+
+  const bd = {
+    mesh, data: item, label: null,
+    origColor: color.clone(), origIntensity: intensity,
+    targetIntensity: intensity,
+    breathPhase: !isDir ? (Math.random() * Math.PI * 2) : null,
+    scanPhase: (isDir && cc > 5 && h > 3) ? Math.random() * 10 : null,
+    scanline: mesh.userData._scanline || null,
+  };
+  S.buildings.push(bd);
+}
+
+// ============================================================
+// GROWTH ANIMATION
+// ============================================================
+function startGrowthAnim() {
+  // Wave delay is handled per-building in buildingAnims
+  // Emit ring wave after growth complete
+  setTimeout(() => {
+    emitRingWave();
+  }, 2500);
+}
+
+function emitRingWave() {
+  const ringGeo = new THREE.RingGeometry(0.5, 1, 48);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: 0x4A9EFF, transparent: true, opacity: 0.4, side: THREE.DoubleSide,
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = -Math.PI/2;
+  ring.position.y = 0.05;
+  S.scene.add(ring);
+
+  let scale = 1;
+  function expand() {
+    scale += 0.08;
+    ring.scale.set(scale, scale, 1);
+    ringMat.opacity *= 0.97;
+    if (ringMat.opacity > 0.005 && scale < 60) {
+      requestAnimationFrame(expand);
+    } else {
+      S.scene.remove(ring);
+      ringGeo.dispose(); ringMat.dispose();
+    }
+  }
+  expand();
+}
+
+// ============================================================
+// CLUSTER DETECTION
+// ============================================================
+function detectClusters(root) {
+  // Divide the city into grid sectors, find dominant file type in each
+  const sectorSize = 12;
+  const sectors = {};
+
+  for (const b of S.buildings) {
+    if (b.data.isDirectory) continue;
+    const x = Math.round((b.mesh.position.x) / sectorSize);
+    const z = Math.round((b.mesh.position.z) / sectorSize);
+    const key = x + ',' + z;
+    if (!sectors[key]) sectors[key] = { count: 0, types: {}, x: x * sectorSize, z: z * sectorSize };
+    sectors[key].count++;
+    const ext = b.data.extension;
+    const cat = getTypeCategory(ext);
+    sectors[key].types[cat] = (sectors[key].types[cat] || 0) + 1;
+  }
+
+  // Create labels for pure sectors (>= 60% one type, min 5 files)
+  for (const [key, sec] of Object.entries(sectors)) {
+    if (sec.count < 5) continue;
+    let maxType = '', maxCount = 0;
+    for (const [t, c] of Object.entries(sec.types)) {
+      if (c > maxCount) { maxCount = c; maxType = t; }
+    }
+    if (maxCount / sec.count >= 0.5) {
+      const emoji = typeEmoji(maxType);
+      const div = document.createElement('div');
+      div.textContent = emoji + ' ' + typeLabel(maxType);
+      div.style.cssText = 'color:rgba(255,255,255,0.5);font-size:11px;font-weight:400;text-shadow:0 0 20px rgba(0,0,0,0.9);background:rgba(0,0,0,0.3);padding:3px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.04);backdrop-filter:blur(6px);pointer-events:none';
+      const label = new CSS2DObject(div);
+      label.position.set(sec.x, 0.5, sec.z);
+      S.labelGroup.add(label);
+    }
+  }
+}
+
+function getTypeCategory(ext) {
+  if (/jpg|jpeg|png|gif|bmp|svg|webp|ico/i.test(ext)) return 'image';
+  if (/mp4|avi|mkv|mov|wmv|flv|webm/i.test(ext)) return 'video';
+  if (/mp3|wav|flac|aac|ogg|m4a/i.test(ext)) return 'audio';
+  if (/pdf|doc|docx|txt|rtf|md/i.test(ext)) return 'document';
+  if (/xls|xlsx|csv/i.test(ext)) return 'spreadsheet';
+  if (/ppt|pptx|key/i.test(ext)) return 'presentation';
+  if (/js|ts|tsx|jsx|py|java|cpp|c|cs|go|rs|php|rb|swift|kt|scala/i.test(ext)) return 'code';
+  if (/html|htm|css|scss|xml|json|yaml|yml|toml/i.test(ext)) return 'web';
+  if (/zip|rar|7z|tar|gz/i.test(ext)) return 'archive';
+  if (/exe|msi|app|dmg|sh|bat/i.test(ext)) return 'executable';
+  return 'other';
+}
+
+function typeEmoji(t) {
+  return { image:'鈻?, video:'鈻?, audio:'鈾?, document:'鈻?, spreadsheet:'鈯?, presentation:'鈻?, code:'鉄?, web:'鈼?, archive:'鈯?, executable:'鈿?, other:'鈼? }[t] || '鈼?;
+}
+function typeLabel(t) {
+  return { image:'鍥剧墖鍖?, video:'褰遍煶鍖?, audio:'闊充箰鍖?, document:'鏂囨。鍖?, spreadsheet:'鏁版嵁鍖?, presentation:'婕旂ず鍖?, code:'浠ｇ爜鍖?, web:'缃戦〉鍖?, archive:'瀛樻。鍖?, executable:'绋嬪簭鍖?, other:'鍏朵粬' }[t] || '鍏朵粬';
+}
+
+// ============================================================
+// INTERACTIONS
+// ============================================================
+function setupInteraction() {
+  const canvas = S.renderer.domElement;
+  const rc = S.raycaster, pt = S.pointer;
+
+  let hoverTimeout = null;
+
+  canvas.addEventListener('pointermove', e => {
+    pt.x = (e.clientX/window.innerWidth)*2 - 1;
+    pt.y = -(e.clientY/window.innerHeight)*2 + 1;
+
+    rc.setFromCamera(pt, S.camera);
+    const meshes = S.buildings.map(b => b.mesh);
+    const hits = rc.intersectObjects(meshes);
+
+    if (S.hovered) {
+      resetHover(S.hovered);
+      S.hovered = null;
+      canvas.style.cursor = 'default';
+      hideTooltip();
+    }
+
+    if (hits.length > 0) {
+      const hit = hits[0].object;
+      if (hit.userData && hit.userData.item) {
+        S.hovered = hit;
+        applyHover(hit);
+        canvas.style.cursor = 'pointer';
+        clearTimeout(hoverTimeout);
+        hoverTimeout = setTimeout(() => playHover(), 50);
+        showTooltip(hit, e);
+      }
+    }
+  });
+
+  canvas.addEventListener('click', e => {
+    if (e.clientX && e.clientY) {
+      pt.x = (e.clientX/window.innerWidth)*2 - 1;
+      pt.y = -(e.clientY/window.innerHeight)*2 + 1;
+    }
+    rc.setFromCamera(pt, S.camera);
+    const meshes = S.buildings.map(b => b.mesh);
+    const hits = rc.intersectObjects(meshes);
+    if (hits.length > 0) {
+      const hit = hits[0].object;
+      if (hit.userData && hit.userData.item) {
+        playClick();
+        onClickBuilding(hit);
+      }
+    }
+  });
+
+  canvas.addEventListener('dblclick', e => {
+    pt.x = (e.clientX/window.innerWidth)*2 - 1;
+    pt.y = -(e.clientY/window.innerHeight)*2 + 1;
+    rc.setFromCamera(pt, S.camera);
+    const meshes = S.buildings.map(b => b.mesh);
+    const hits = rc.intersectObjects(meshes);
+    if (hits.length > 0) {
+      const hit = hits[0].object;
+      if (hit.userData && hit.userData.item) {
+        focusBuilding(hit.userData.item, 0.8);
+      }
+    }
+  });
+
+  // Click empty to close detail
+  canvas.addEventListener('click', e => {
+    pt.x = (e.clientX/window.innerWidth)*2 - 1;
+    pt.y = -(e.clientY/window.innerHeight)*2 + 1;
+    rc.setFromCamera(pt, S.camera);
+    const meshes = S.buildings.map(b => b.mesh);
+    if (rc.intersectObjects(meshes).length === 0) {
+      hideDetail();
+    }
+  });
+}
+
+let hoverTooltip = null;
+function showTooltip(mesh, e) {
+  if (!hoverTooltip) {
+    const div = document.createElement('div');
+    div.id = 'hover-tooltip';
+    div.style.cssText = 'position:fixed;z-index:150;pointer-events:none;background:rgba(10,10,30,0.8);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:6px 12px;font-size:12px;color:#fff;transition:opacity .15s;opacity:0;font-family:var(--font);box-shadow:0 4px 20px rgba(0,0,0,0.4)';
+    document.body.appendChild(div);
+    hoverTooltip = div;
+  }
+  const item = mesh.userData.item;
+  const typeIcon = item.isDirectory ? '鈻? : '鈼?;
+  hoverTooltip.innerHTML = `<strong>${item.name}</strong><br><span style="color:rgba(255,255,255,0.5);font-size:11px">${typeIcon} ${fmtSize(item.size)}</span>`;
+  hoverTooltip.style.left = (e.clientX + 16) + 'px';
+  hoverTooltip.style.top = (e.clientY - 10) + 'px';
+  // Keep on screen
+  const r = hoverTooltip.getBoundingClientRect();
+  if (r.right > window.innerWidth) hoverTooltip.style.left = (e.clientX - r.width - 10) + 'px';
+  if (r.bottom > window.innerHeight) hoverTooltip.style.top = (e.clientY - r.height - 10) + 'px';
+  hoverTooltip.style.opacity = '1';
+}
+
+function hideTooltip() {
+  if (hoverTooltip) hoverTooltip.style.opacity = '0';
+}
+
+function applyHover(mesh) {
+  const bd = S.buildings.find(b => b.mesh === mesh);
+  if (!bd) return;
+  mesh.material.emissiveIntensity = bd.origIntensity + 0.8;
+
+  // Scale up slightly
+  if (!mesh.userData._hoverScale) {
+    const w = mesh.geometry.parameters.width;
+    const h = mesh.geometry.parameters.height;
+    const d = mesh.geometry.parameters.depth;
+    // Store original scale
+    mesh.userData._baseScale = mesh.scale.clone();
+    mesh.userData._hoverScale = true;
+  }
+  mesh.scale.set(1.05, mesh.scale.y, 1.05);
+
+  // Dim others
+  for (const b of S.buildings) {
+    if (b.mesh !== mesh) {
+      b.mesh.material.emissiveIntensity = Math.max(0.05, b.origIntensity * 0.3);
+    }
+  }
+}
+
+function resetHover(mesh) {
+  if (!mesh) return;
+  const bd = S.buildings.find(b => b.mesh === mesh);
+  if (bd) {
+    mesh.material.emissiveIntensity = bd.origIntensity;
+  }
+  mesh.scale.set(1, mesh.scale.y || 1, 1);
+  mesh.userData._hoverScale = false;
+
+  // Restore others
+  for (const b of S.buildings) {
+    b.mesh.material.emissiveIntensity = b.origIntensity;
+  }
+}
+
+// ============================================================
+// CLICK BUILDING
+// ============================================================
+function onClickBuilding(mesh) {
+  const item = mesh.userData.item;
+  showDetail(item);
+
+  // Ripple effect
+  createClickRipple(mesh);
+
+  // Flash gold
+  const origEm = mesh.material.emissive.clone();
+  const origInt = mesh.material.emissiveIntensity;
+  mesh.material.emissive.set(GOLD);
+  mesh.material.emissiveIntensity = 2;
+  setTimeout(() => {
+    mesh.material.emissive.copy(origEm);
+    mesh.material.emissiveIntensity = origInt;
+  }, 1000);
+
+  // Focus camera
+  focusBuilding(item, 0.8);
+}
+
+function createClickRipple(mesh) {
+  const pos = mesh.position.clone();
+  const ripples = [];
+  for (let i = 0; i < 3; i++) {
+    const r = 0.3;
+    const geo = new THREE.RingGeometry(r * 0.3, r * 0.5, 24);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x4A9EFF, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(geo, mat);
+    ring.rotation.x = -Math.PI/2;
+    ring.position.set(pos.x, 0.02, pos.z);
+    S.scene.add(ring);
+    ripples.push({ mesh: ring, mat, scale: 1, delay: i * 0.1 });
+  }
+
+  function expandRipples() {
+    let alive = false;
+    for (const r of ripples) {
+      if (r.scale < 15) {
+        alive = true;
+        r.mesh.scale.set(r.scale, r.scale, 1);
+        r.mat.opacity *= 0.96;
+        r.scale += 0.12;
+      }
+    }
+    if (alive) requestAnimationFrame(expandRipples);
+    else {
+      for (const r of ripples) { S.scene.remove(r.mesh); r.mat.dispose(); r.mesh.geometry.dispose(); }
+    }
+  }
+  setTimeout(expandRipples, 0);
+}
+
+function focusBuilding(item, duration = 0.8) {
+  const bd = S.buildings.find(b => b.data.path === item.path);
+  if (!bd) return;
+  const pos = bd.mesh.position.clone();
+  const target = new THREE.Vector3(pos.x, pos.y, pos.z);
+  const h = bd.mesh.geometry.parameters.height;
+  const isDir = item.isDirectory;
+  const offset = isDir ? Math.max(h * 1.5, 5) : Math.max(h * 3, 3);
+  const camTarget = new THREE.Vector3(pos.x + offset * 0.7, pos.y + offset * 0.6, pos.z + offset * 0.7);
+
+  S.cameraAnimating = true;
+  const ctrl = S.cameraController;
+  if (!ctrl) {
+    // Fallback direct
+    S.camera.position.copy(camTarget);
+    S.controls.target.copy(target);
+    S.camera.lookAt(target);
+    S.controls.update();
+    S.cameraAnimating = false;
+    return;
+  }
+  ctrl.flyTo(camTarget, target, duration, {
+    ease: 'power2InOut',
+    arcHeight: 4,
+    overshoot: 0.03,
+  }).then(() => {
+    S.cameraAnimating = false;
+  });
+}
+
+// ============================================================
+// SEARCH
+// ============================================================
+function performSearch(query) {
+  if (!query.trim() || !S.items.length) {
+    clearSearch();
+    return;
+  }
+  const q = query.toLowerCase();
+
+  // Dim unmatched
+  for (const b of S.buildings) {
+    const matches = b.data.name.toLowerCase().includes(q) || b.data.path.toLowerCase().includes(q);
+    if (matches) {
+      b.mesh.material.opacity = 1;
+      b.mesh.material.transparent = false;
+      b.mesh.visible = true;
+    } else {
+      b.mesh.material.transparent = true;
+      b.mesh.material.opacity = 0.15;
+    }
+    if (b.label) b.label.visible = matches;
+  }
+
+  S.searchResults = S.buildings.filter(b =>
+    b.data.name.toLowerCase().includes(q) || b.data.path.toLowerCase().includes(q)
+  );
+
+  const countEl = document.getElementById('search-count');
+  if (S.searchResults.length === 0) {
+    countEl.textContent = '鏈壘鍒?;
+    return;
+  }
+
+  countEl.textContent = `鎵惧埌 ${S.searchResults.length} 涓猔;
+
+  // Sequential lighting
+  S.searchResults.forEach((b, i) => {
+    setTimeout(() => {
+      b.mesh.material.emissive.set(GOLD);
+      b.mesh.material.emissiveIntensity = 1.5;
+    }, i * 80);
+  });
+
+  S.searchIdx = 0;
+  setTimeout(() => focusBuilding(S.searchResults[0].data, 1.2), 200);
+
+  // Reset after 3s
+  setTimeout(() => {
+    for (const b of S.buildings) {
+      b.mesh.material.emissive.copy(b.origColor);
+      b.mesh.material.emissiveIntensity = b.origIntensity;
+      b.mesh.material.transparent = !b.data.isDirectory;
+      b.mesh.material.opacity = b.data.isDirectory ? 1 : 0.88;
+      b.mesh.visible = true;
+      if (b.label) b.label.visible = true;
+    }
+  }, 3500);
+}
+
+function clearSearch() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-count').textContent = '';
+  S.searchResults = [];
+  S.searchIdx = -1;
+  for (const b of S.buildings) {
+    b.mesh.material.emissive.copy(b.origColor);
+    b.mesh.material.emissiveIntensity = b.origIntensity;
+    b.mesh.material.transparent = !b.data.isDirectory;
+    b.mesh.material.opacity = b.data.isDirectory ? 1 : 0.88;
+    b.mesh.visible = true;
+    if (b.label) b.label.visible = true;
+  }
+}
+
+// ============================================================
+// TIME SLIDER
+// ============================================================
+function applyTime(maxDays) {
+  for (const b of S.buildings) {
+    const days = (Date.now() - b.data.modifiedTime.getTime()) / 864e5;
+    if (maxDays >= 99999 || days <= maxDays) {
+      b.targetIntensity = b.origIntensity;
+    } else {
+      b.targetIntensity = b.origIntensity * 0.06;
+    }
+  }
+}
+
+// ============================================================
+// DETAIL PANEL
+// ============================================================
+function showDetail(item) {
+  const panel = document.getElementById('detail-panel');
+  document.getElementById('detail-name').textContent = item.name;
+  const typeEl = document.getElementById('detail-type');
+  typeEl.textContent = item.isDirectory ? '鈻?鏂囦欢澶? : '鈼?鏂囦欢';
+  typeEl.className = 'd-type ' + (item.isDirectory ? 'dt-folder' : 'dt-file');
+
+  let html = '';
+  html += `<div class="rw"><span class="l">澶у皬</span><span class="r">${fmtSize(item.size)}</span></div>`;
+  html += `<div class="rw"><span class="l">淇敼鏃堕棿</span><span class="r">${fmtTime(item.modifiedTime)}</span></div>`;
+  html += `<div class="rw"><span class="l">璺緞</span><span class="r">${item.path}</span></div>`;
+  if (item.isDirectory) {
+    html += `<div class="rw"><span class="l">瀛愰」鐩?/span><span class="r">${(item.children||[]).length}</span></div>`;
+    html += `<div class="rw"><span class="l">灞傜骇</span><span class="r">娣卞害 ${item.depth}</span></div>`;
+  } else {
+    html += `<div class="rw"><span class="l">绫诲瀷</span><span class="r">.${item.extension}</span></div>`;
+    html += `<div class="rw"><span class="l">灞傜骇</span><span class="r">娣卞害 ${item.depth}</span></div>`;
+  }
+  document.getElementById('detail-info').innerHTML = html;
+
+  const expandBtn = document.getElementById('btn-expand-children');
+  if (item.isDirectory && (item.children||[]).length > 0) {
+    expandBtn.style.display = 'inline-block';
+    expandBtn.onclick = () => highlightChildren(item);
+  } else {
+    expandBtn.style.display = 'none';
+  }
+
+  panel.classList.add('active');
+  S.selected = item;
+}
+
+function hideDetail() {
+  document.getElementById('detail-panel').classList.remove('active');
+  S.selected = null;
+  // Reset children highlights
+  for (const b of S.buildings) {
+    b.mesh.material.emissive.copy(b.origColor);
+    b.mesh.material.emissiveIntensity = b.origIntensity;
+  }
+}
+
+function highlightChildren(parent) {
+  const childPaths = new Set();
+  (function walk(n) {
+    childPaths.add(n.path);
+    for (const c of n.children||[]) walk(c);
+  })(parent);
+
+  for (const b of S.buildings) {
+    if (childPaths.has(b.data.path)) {
+      b.mesh.material.emissive.set(GOLD);
+      b.mesh.material.emissiveIntensity = 1.2;
+    } else {
+      b.mesh.material.emissive.copy(b.origColor);
+      b.mesh.material.emissiveIntensity = b.origIntensity * 0.2;
+    }
+  }
+}
+
+// ============================================================
+// STATS
+// ============================================================
+function updateStats(items) {
+  const folders = items.filter(i=>i.isDirectory).length;
+  const files = items.filter(i=>!i.isDirectory).length;
+  const totalSize = items.reduce((s,i)=>s+i.size, 0);
+  document.getElementById('stat-folders').textContent = folders.toLocaleString();
+  document.getElementById('stat-files').textContent = files.toLocaleString();
+  document.getElementById('stat-size').textContent = fmtSize(totalSize);
+  document.getElementById('stat-buildings').textContent = S.buildings.length.toLocaleString();
+
+  const sf = items.filter(i=>i.isDirectory && i.depth > 0).sort((a,b)=>b.size-a.size).slice(0,10);
+  const sfi = items.filter(i=>!i.isDirectory).sort((a,b)=>b.size-a.size).slice(0,10);
+  document.getElementById('ranking-folders').innerHTML = sf.map(f => `<div class="r-item"><span class="nm">${f.name}</span><span class="sz">${fmtSize(f.size)}</span></div>`).join('');
+  document.getElementById('ranking-files').innerHTML = sfi.map(f => `<div class="r-item"><span class="nm">${f.name}</span><span class="sz">${fmtSize(f.size)}</span></div>`).join('');
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+function captureScreenshot() {
+  // Render one frame
+  S.composer.render();
+  const dataUrl = S.renderer.domElement.toDataURL('image/png');
+
+  // Add watermark
+  const img = new Image();
+  img.onload = () => {
+    const cvs = document.createElement('canvas');
+    cvs.width = img.width; cvs.height = img.height;
+    const ctx = cvs.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    const now = new Date();
+    const dateStr = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    ctx.fillText('File City 路 ' + dateStr, img.width - 16, img.height - 12);
+    const link = document.createElement('a');
+    link.download = 'file-city-' + Date.now() + '.png';
+    link.href = cvs.toDataURL('image/png');
+    link.click();
+    showToast('鎴浘宸蹭繚瀛?);
+  };
+  img.src = dataUrl;
+}
+
+function exportReport() {
+  // HTML report
+  const now = new Date();
+  const dateStr = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+
+  const folders = S.items.filter(i=>i.isDirectory).length;
+  const files = S.items.filter(i=>!i.isDirectory).length;
+  const totalSize = S.items.reduce((s,i)=>s+i.size, 0);
+  const to10Folders = S.items.filter(i=>i.isDirectory && i.depth > 0).sort((a,b)=>b.size-a.size).slice(0,10);
+  const to10Files = S.items.filter(i=>!i.isDirectory).sort((a,b)=>b.size-a.size).slice(0,10);
+
+  // Type distribution
+  const typeDist = {};
+  for (const i of S.items) {
+    if (i.isDirectory) continue;
+    const cat = getTypeCategory(i.extension);
+    typeDist[cat] = (typeDist[cat] || 0) + i.size;
+  }
+  const totalType = Object.values(typeDist).reduce((s,v)=>s+v, 0);
+  const typeColors = { image:'#FF6B35', video:'#4ECDC4', audio:'#FFE66D', document:'#95E1D3', spreadsheet:'#A8E6CF', presentation:'#FFB3B3', code:'#6C5CE7', web:'#FD79A8', archive:'#FDCB6E', executable:'#E17055', other:'#666680' };
+  const typeLabels = { image:'鍥剧墖', video:'瑙嗛', audio:'闊抽', document:'鏂囨。', spreadsheet:'琛ㄦ牸', presentation:'婕旂ず', code:'浠ｇ爜', web:'缃戦〉', archive:'鍘嬬缉鍖?, executable:'鍙墽琛屾枃浠?, other:'鍏朵粬' };
+
+  const pieBars = Object.entries(typeDist).sort((a,b)=>b[1]-a[1]).map(([t,s]) => {
+    const pct = ((s/totalType)*100).toFixed(1);
+    return `<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${typeColors[t]||'#666'}"></span><span style="flex:1">${typeLabels[t]||t}</span><span>${pct}%</span><span style="color:#888;font-size:12px">${fmtSize(s)}</span></div>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>鏂囦欢鍩庡競鎶ュ憡 - ${dateStr}</title><style>
+body{background:#0a0a1a;color:#e8ecf5;font-family:system-ui,sans-serif;padding:40px;max-width:800px;margin:auto}
+h1{color:#FFD93D;font-size:28px;margin-bottom:4px}
+.sub{color:rgba(255,255,255,0.4);font-size:14px;margin-bottom:30px}
+.section{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:20px;margin-bottom:16px}
+.section h2{font-size:16px;color:#4A9EFF;margin-bottom:12px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat-item{padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:6px}
+.stat-item .l{font-size:12px;color:rgba(255,255,255,0.4)}
+.stat-item .v{font-size:16px;font-weight:600;margin-top:2px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:rgba(255,255,255,0.4);padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.06)}
+td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,0.03)}
+tr:hover td{background:rgba(255,255,255,0.03)}
+.footer{text-align:center;color:rgba(255,255,255,0.2);font-size:12px;margin-top:30px}
+</style></head><body>
+<h1>鏂囦欢鍩庡競鎶ュ憡</h1>
+<div class="sub">鐢熸垚浜?${dateStr}</div>
+<div class="section">
+  <h2>鍩庡競鎬昏</h2>
+  <div class="stat-grid">
+    <div class="stat-item"><div class="l">鏂囦欢澶?/div><div class="v">${folders.toLocaleString()}</div></div>
+    <div class="stat-item"><div class="l">鏂囦欢</div><div class="v">${files.toLocaleString()}</div></div>
+    <div class="stat-item"><div class="l">鎬诲ぇ灏?/div><div class="v">${fmtSize(totalSize)}</div></div>
+    <div class="stat-item"><div class="l">寤虹瓚鏁伴噺</div><div class="v">${S.buildings.length.toLocaleString()}</div></div>
+  </div>
+</div>
+<div class="section">
+  <h2>鏂囦欢绫诲瀷鍒嗗竷</h2>
+  ${pieBars}
+</div>
+<div class="section">
+  <h2>Top 10 鏈€澶ф枃浠跺す</h2>
+  <table><tr><th>鍚嶇О</th><th>澶у皬</th><th>瀛愰」鐩?/th></tr>
+  ${to10Folders.map(f => '<tr><td>'+f.name+'</td><td>'+fmtSize(f.size)+'</td><td>'+(f.children||[]).length+'</td></tr>').join('')}
+  </table>
+</div>
+<div class="section">
+  <h2>Top 10 鏈€澶ф枃浠?/h2>
+  <table><tr><th>鍚嶇О</th><th>澶у皬</th><th>绫诲瀷</th></tr>
+  ${to10Files.map(f => '<tr><td>'+f.name+'</td><td>'+fmtSize(f.size)+'</td><td>.'+f.extension+'</td></tr>').join('')}
+  </table>
+</div>
+<div class="footer">File City 路 鏂囦欢绯荤粺3D鍙鍖栧伐鍏?/div>
+</body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const link = document.createElement('a');
+  link.download = 'file-city-report-' + Date.now() + '.html';
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  URL.revokeObjectURL(link.href);
+  showToast('鎶ュ憡宸插鍑?);
+}
+
+function exportCityJSON() {
+  const data = {
+    meta: { exportTime: new Date().toISOString(), totalFiles: S.items.filter(i=>!i.isDirectory).length, totalFolders: S.items.filter(i=>i.isDirectory).length, totalSize: S.items.reduce((s,i)=>s+i.size, 0) },
+    buildings: S.buildings.map(b => ({
+      path: b.data.path, name: b.data.name, isDirectory: b.data.isDirectory,
+      position: [b.mesh.position.x, b.mesh.position.y, b.mesh.position.z],
+      height: b.mesh.geometry.parameters.height,
+      size: [b.mesh.geometry.parameters.width, b.mesh.geometry.parameters.height, b.mesh.geometry.parameters.depth],
+      color: '#' + b.origColor.getHexString(),
+      emissiveIntensity: b.origIntensity,
+      fileCount: (b.data.children||[]).length,
+    })),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.download = 'file-city-data-' + Date.now() + '.json';
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  URL.revokeObjectURL(link.href);
+  showToast('鍩庡競鏁版嵁宸插鍑?);
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('active');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('active'), 2200);
+}
+
+// ============================================================
+// KEYBOARD
+// ============================================================
+function setupKeyboard() {
+  // Fly mode key state tracking
+  document.addEventListener('keydown', e => {
+    if (!e.target.closest('input')) {
+      S.flyKeys[e.key] = true;
+    }
+  });
+  document.addEventListener('keyup', e => {
+    S.flyKeys[e.key] = false;
+  });
+
+  // Handle pointer lock exit (ESC pressed) - exit fly mode
+  document.addEventListener('pointerlockchange', () => {
+    if (!document.pointerLockElement && S.flyMode) {
+      S.flyMode = false;
+      S.controls.enabled = true;
+      S.autoRotate = true;
+      document.body.style.cursor = 'default';
+      S.flyKeys = {};
+      showToast('椋炶妯″紡鍏抽棴');
+    }
+  });
+
+  // Fly mode mouse look (FPS-style with pointer lock)
+  const canvas = S.renderer?.domElement || document.getElementById('canvas-container').querySelector('canvas');
+  if (canvas) {
+    canvas.addEventListener('mousemove', e => {
+      if (!S.flyMode) return;
+      if (!document.pointerLockElement) return;
+      const sensitivity = 0.003;
+      const dx = e.movementX || 0;
+      const dy = e.movementY || 0;
+      // Store target position relative to camera
+      const dir = new THREE.Vector3().subVectors(S.controls.target, S.camera.position);
+      const dist = dir.length();
+      const up = new THREE.Vector3(0,1,0);
+      // Yaw around world up
+      const yawQuat = new THREE.Quaternion().setFromAxisAngle(up, -dx * sensitivity);
+      dir.applyQuaternion(yawQuat);
+      // Pitch around local right (clamped to avoid flip)
+      const right = new THREE.Vector3().crossVectors(dir.clone().normalize(), up).normalize();
+      const pitchQuat = new THREE.Quaternion().setFromAxisAngle(right, -dy * sensitivity);
+      dir.applyQuaternion(pitchQuat);
+      // Clamp pitch: prevent camera from flipping
+      const angle = dir.angleTo(up);
+      if (angle < 0.1 || angle > Math.PI - 0.1) {
+        // Revert by undoing pitch
+        dir.applyQuaternion(pitchQuat.clone().invert());
+      }
+      // Re-position camera
+      S.controls.target.copy(S.camera.position).add(dir.normalize().multiplyScalar(dist));
+      S.camera.lookAt(S.controls.target);
+    });
+  }
+
+  document.addEventListener('keydown', e => {
+    const key = e.key.toLowerCase();
+    if (key === 'r' && !e.target.closest('input')) {
+      // Reset camera via CameraFlyController
+      S.autoRotate = true;
+      S.flyMode = false;
+      S.cameraAnimating = true;
+      const ctrl = S.cameraController;
+      if (ctrl) {
+        ctrl.resetView(1.5).then(() => { S.cameraAnimating = false; });
+      } else {
+        S.camera.position.set(22, 18, 22);
+        S.controls.target.set(0, 0, 0);
+        S.controls.update();
+        S.cameraAnimating = false;
+      }
+      showToast('鎽勫儚鏈哄凡澶嶄綅');
+    }
+    if (key === 'f' && !e.target.closest('input')) {
+      S.flyMode = !S.flyMode;
+      if (S.flyMode) {
+        // Enter fly mode: cancel any active camera animation, disable orbit controls
+        if (S.cameraController) S.cameraController.abort();
+        S.controls.enabled = false;
+        S.autoRotate = false;
+        document.body.style.cursor = 'crosshair';
+        // Request pointer lock for FPS-style mouse look
+        try { S.renderer?.domElement?.requestPointerLock?.(); } catch(e) {}
+        showToast('椋炶妯″紡 (WASD+Q/E+榧犳爣)');
+      } else {
+        S.controls.enabled = true;
+        S.autoRotate = true;
+        document.body.style.cursor = 'default';
+        S.flyKeys = {};
+        try { document.exitPointerLock?.(); } catch(e) {}
+        showToast('椋炶妯″紡鍏抽棴');
+      }
+    }
+    if (key === 'escape') {
+      hideDetail();
+      clearSearch();
+    }
+    if (key === ' ') {
+      e.preventDefault();
+      S.autoRotate = !S.autoRotate;
+      showToast(S.autoRotate ? '鑷姩鏃嬭浆寮€鍚? : '鑷姩鏃嬭浆鏆傚仠');
+    }
+    if (key === 's' && !e.target.closest('input')) {
+      e.preventDefault();
+      captureScreenshot();
+    }
+    if (key === 'arrowdown' && S.searchResults.length > 0 && !e.target.closest('input')) {
+      e.preventDefault();
+      S.searchIdx = Math.min(S.searchIdx + 1, S.searchResults.length - 1);
+      focusBuilding(S.searchResults[S.searchIdx].data, 0.5);
+    }
+    if (key === 'arrowup' && S.searchResults.length > 0 && !e.target.closest('input')) {
+      e.preventDefault();
+      S.searchIdx = Math.max(S.searchIdx - 1, 0);
+      focusBuilding(S.searchResults[S.searchIdx].data, 0.5);
+    }
+  });
+}
+
+// ============================================================
+// MAIN
+// ============================================================
+async function main() {
+  setupScene();
+  setupInteraction();
+  setupKeyboard();
+
+  const btnSelect = document.getElementById('btn-select-folder');
+  const btnCancel = document.getElementById('btn-cancel-scan');
+  const progressOverlay = document.getElementById('progress-overlay');
+  const progressFill = document.getElementById('progress-fill');
+  const progressText = document.getElementById('progress-text');
+  const searchInput = document.getElementById('search-input');
+  const btnSearch = document.getElementById('btn-search');
+  const timeSlider = document.getElementById('time-slider');
+  const timeLabel = document.getElementById('time-label');
+  const statsPanel = document.getElementById('stats-panel');
+  const rankingSection = document.getElementById('ranking-section');
+  const detailClose = document.getElementById('detail-close');
+  const btnScreenshot = document.getElementById('btn-screenshot');
+  const btnExport = document.getElementById('btn-export');
+
+  btnSelect.addEventListener('click', async () => {
+    if (!window.showDirectoryPicker) {
+      showToast('璇蜂娇鐢ㄦ渶鏂扮増 Chrome/Edge');
+      return;
+    }
+    try {
+      const handle = await window.showDirectoryPicker();
+      progressOverlay.classList.add('active');
+      progressFill.style.width = '0%';
+      progressText.textContent = '宸叉壂鎻?0 涓」鐩?;
+      S.scanAbort = false;
+
+      const startTime = performance.now();
+      const result = await scanDir(handle, 5, 20000, count => {
+        progressFill.style.width = Math.min(100, (count/20000)*100) + '%';
+        progressText.textContent = `宸叉壂鎻?${count} 涓」鐩甡;
+      });
+      const elapsed = ((performance.now() - startTime)/1000).toFixed(1);
+      progressOverlay.classList.remove('active');
+
+      if (S.scanAbort) { showToast('鈴?宸插彇娑?); return; }
+      if (result.items.length === 0) { showToast('鏈壘鍒版枃浠?); return; }
+
+      document.getElementById('stat-time').textContent = elapsed + '绉?;
+      // Hide hint
+      document.getElementById('empty-hint').style.display = 'none';
+
+      showToast(`鎵弿瀹屾垚 (${result.items.length} 椤? ${elapsed}绉?`);
+      S.items = result.items;
+      S.tree = result.items[0];
+      buildCity(result.items);
+      applyTime(99999);
+
+    } catch (err) {
+      if (err.name === 'AbortError' || err.message?.includes('abort')) return;
+      progressOverlay.classList.remove('active');
+      showToast(err.message);
+      console.error(err);
+    }
+  });
+
+  btnCancel.addEventListener('click', () => {
+    S.scanAbort = true;
+    progressOverlay.classList.remove('active');
+  });
+
+  btnSearch.addEventListener('click', () => performSearch(searchInput.value));
+  searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') performSearch(searchInput.value);
+  });
+
+  timeSlider.addEventListener('input', () => {
+    const idx = parseInt(timeSlider.value);
+    timeLabel.textContent = TIME_LABELS[idx] || '鍏ㄩ儴';
+    applyTime(TIME_VALS[idx] || 99999);
+  });
+
+  let statsOpen = false;
+  statsPanel.addEventListener('click', () => {
+    statsOpen = !statsOpen;
+    rankingSection.classList.toggle('open', statsOpen);
+  });
+
+  detailClose.addEventListener('click', hideDetail);
+  btnScreenshot.addEventListener('click', captureScreenshot);
+  btnExport.addEventListener('click', exportReport);
+}
+
+// Browser check
+if (!window.showDirectoryPicker) {
+    document.getElementById('empty-hint').innerHTML = '<h2>娴忚鍣ㄤ笉鏀寔</h2><p>璇蜂娇鐢ㄦ渶鏂扮増 Chrome/Edge<br>闇€瑕?File System Access API</p>';
+}
+
+main().catch(err => { console.error(err); showToast(err.message); });
+</script>
+</body>
+</html>
